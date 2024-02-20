@@ -3,6 +3,7 @@ package github.leavesczy.matisse.internal.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,7 +35,7 @@ internal fun MatisseBottomBar(
             .navigationBarsPadding()
             .fillMaxWidth()
             .height(height = 56.dp)
-            .background(color = colorResource(id = R.color.matisse_bottom_navigation_bar_background_color))
+            .background(color = MaterialTheme.colorScheme.secondary)
     ) {
         Text(
             modifier = Modifier
@@ -52,9 +53,9 @@ internal fun MatisseBottomBar(
             textAlign = TextAlign.Center,
             style = TextStyle(
                 color = if (previewButtonViewState.clickable) {
-                    colorResource(id = R.color.matisse_preview_text_color)
+                    MaterialTheme.colorScheme.onSecondary
                 } else {
-                    colorResource(id = R.color.matisse_preview_text_color_if_disable)
+                    MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.3f)
                 },
                 fontSize = 16.sp
             ),
@@ -75,13 +76,11 @@ internal fun MatisseBottomBar(
                 .wrapContentSize(align = Alignment.Center),
             textAlign = TextAlign.Center,
             style = TextStyle(
-                color = colorResource(
-                    id = if (sureButtonViewState.clickable) {
-                        R.color.matisse_sure_text_color
-                    } else {
-                        R.color.matisse_sure_text_color_if_disable
-                    }
-                ),
+                color = if (sureButtonViewState.clickable) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.primary.copy(0.3f)
+                },
                 fontSize = 16.sp
             ),
             text = sureButtonViewState.text

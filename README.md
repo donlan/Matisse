@@ -21,3 +21,12 @@
 Apk 下载体验请看：[Releases](https://github.com/leavesCZY/Matisse/releases)
 
 接入指南请看：[Wiki](https://github.com/leavesCZY/Matisse/wiki/%E6%8E%A5%E5%85%A5%E6%8C%87%E5%8D%97)
+
+
+
+# 对比原来版本做了下面的优化
+
+1. 使用Paging3实现分页加载，优化加载速度。原方案是一次性全部查询完再再筛选Bucket。首次查询会很慢。
+2. 支持fallback使用系统选择照片（Android 14目前只能选择被授权允许访问的部分）
+3. 加入"pt", "es", "it", "fr", "tr", "ru", "de", "pl", "ko", "ja", "id", "th", "zh-CN","ar","zh-TW","ms" 翻译
+4. 部分UI逻辑调整优化

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -15,6 +16,7 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
@@ -44,6 +46,7 @@ internal fun MatisseCheckbox(
 ) {
     val localDensity = LocalDensity.current
     val context = LocalContext.current
+    val colors = MaterialTheme.colorScheme
     val textPaint = remember {
         Paint().asFrameworkPaint().apply {
             isAntiAlias = true
@@ -52,18 +55,16 @@ internal fun MatisseCheckbox(
             textAlign = android.graphics.Paint.Align.CENTER
             with(localDensity) {
                 textSize = 14.sp.toPx()
-                color = ContextCompat.getColor(context, R.color.matisse_check_box_text_color)
+                color = colors.onPrimary.toArgb()
             }
         }
     }
-    val circleColor = colorResource(
-        id = if (enabled) {
-            R.color.matisse_check_box_circle_color
-        } else {
-            R.color.matisse_check_box_circle_color_if_disable
-        }
-    )
-    val fillColor = colorResource(id = R.color.matisse_check_box_fill_color)
+    val circleColor = if (enabled) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+    }
+    val fillColor =  MaterialTheme.colorScheme.primary
     Canvas(
         modifier = modifier
             .selectable(

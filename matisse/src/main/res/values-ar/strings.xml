@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <resources>
     <string name="matisse_default_bucket_name">All</string>
     <string name="matisse_on_read_external_storage_permission_denied">Please grant storage read access permission and try again</string>
@@ -13,3 +13,4 @@
     <string name="matisse_load_empty">You have enter an unexplored space.</string>
     <string name="matisse_missing_permission">We need storage permission to load you images.</string>
 </resources>
+

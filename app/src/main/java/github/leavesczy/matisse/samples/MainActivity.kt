@@ -8,10 +8,13 @@ import android.widget.RadioGroup
 import androidx.activity.result.ActivityResultCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.ui.graphics.Color
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import github.leavesczy.matisse.*
+import github.leavesczy.matisse.internal.theme.ThemeColorProvider
+import kotlinx.parcelize.Parcelize
 
 /**
  * @Author: leavesCZY
@@ -55,15 +58,29 @@ class MainActivity : AppCompatActivity() {
 
     private val fileProviderAuthority = "github.leavesczy.matisse.samples.FileProvider"
 
+
+    @Parcelize
+    object ThemeColor : ThemeColorProvider {
+        override fun create(
+            isDark: Boolean,
+            colorScheme: androidx.compose.material3.ColorScheme
+        ): androidx.compose.material3.ColorScheme {
+            return colorScheme.copy(primary = Color(0xFF48BD8E))
+        }
+
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         setSupportActionBar(findViewById<MaterialToolbar>(R.id.toolbar))
+
         findViewById<View>(R.id.btnImagePicker).setOnClickListener {
             val matisse = Matisse(
                 supportedMimeTypes = getSupportedMimeTypes(),
                 maxSelectable = getMaxSelectable(),
                 captureStrategy = getCaptureStrategy(),
+                themeColorProvider = ThemeColor
             )
             matisseContractLauncher.launch(matisse)
         }
@@ -84,9 +101,11 @@ class MainActivity : AppCompatActivity() {
             R.id.rbMaxSelectable1 -> {
                 return 1
             }
+
             R.id.rbMaxSelectable2 -> {
                 return 2
             }
+
             R.id.rbMaxSelectable3 -> {
                 return 3
             }
@@ -103,12 +122,15 @@ class MainActivity : AppCompatActivity() {
             R.id.rbNothing -> {
                 return NothingCaptureStrategy
             }
+
             R.id.rbFileProvider -> {
                 return FileProviderCaptureStrategy(authority = fileProviderAuthority)
             }
+
             R.id.rbMediaStore -> {
                 return MediaStoreCaptureStrategy()
             }
+
             R.id.rbSmart -> {
                 return SmartCaptureStrategy(authority = fileProviderAuthority)
             }

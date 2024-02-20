@@ -11,6 +11,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
@@ -53,6 +55,12 @@ class MatisseActivity : AppCompatActivity() {
         }
     })
 
+    private val pickRequest = registerForActivityResult(PickImages()) { uris ->
+        uris?.firstOrNull()?.let {
+            matisseViewModel.onTakeFromFolder(it)
+        }
+    }
+
     private val requestReadImagesPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             matisseViewModel.onRequestReadImagesPermissionResult(granted = granted)
@@ -85,11 +93,13 @@ class MatisseActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
-            MatisseTheme {
+            MatisseTheme(colorProvider = matisse.themeColorProvider) {
                 SetSystemUi(previewPageVisible = matisseViewModel.matissePreviewViewState.visible)
                 MatissePage(
                     viewModel = matisseViewModel,
-                    onRequestTakePicture = ::onRequestTakePicture
+                    onRequestTakePicture = ::onRequestTakePicture,
+                    onRequestPermission = { requestReadImagesPermission() },
+                    onRequestOpenFolder = { pickRequest.launch(Unit) }
                 )
                 MatissePreviewPage(viewModel = matisseViewModel)
             }
@@ -116,7 +126,7 @@ class MatisseActivity : AppCompatActivity() {
         val navigationBarColor = if (previewPageVisible) {
             Color.Transparent
         } else {
-            colorResource(id = R.color.matisse_navigation_bar_color)
+            MaterialTheme.colorScheme.secondary
         }
         val statusBarDarkIcons = if (previewPageVisible) {
             false

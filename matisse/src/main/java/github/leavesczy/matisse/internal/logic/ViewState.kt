@@ -1,8 +1,10 @@
 package github.leavesczy.matisse.internal.logic
 
 import android.net.Uri
+import androidx.paging.PagingData
 import github.leavesczy.matisse.Matisse
 import github.leavesczy.matisse.MediaResource
+import kotlinx.coroutines.flow.Flow
 
 /**
  * @Author: leavesCZY
@@ -15,7 +17,8 @@ internal enum class MatisseState {
     PermissionDenied,
     ImagesLoading,
     ImagesLoaded,
-    ImagesEmpty;
+    ImagesEmpty,
+    ImagesError,
 }
 
 internal data class MediaBucket(
@@ -23,7 +26,8 @@ internal data class MediaBucket(
     val displayName: String,
     val displayIcon: Uri,
     val resources: List<MediaResource>,
-    val supportCapture: Boolean
+    val supportCapture: Boolean,
+    val pageSource: Flow<PagingData<MediaResource>>? = null
 )
 
 internal data class MatisseViewState(
@@ -31,7 +35,8 @@ internal data class MatisseViewState(
     val state: MatisseState,
     val allBucket: List<MediaBucket>,
     val selectedBucket: MediaBucket,
-    val selectedResources: List<MediaResource>
+    val selectedResources: List<MediaResource>,
+    val pageSource: Flow<PagingData<MediaResource>>? = null
 )
 
 internal data class MatissePreviewButtonViewState(
@@ -51,7 +56,7 @@ internal data class MatissePreviewViewState(
     val visible: Boolean,
     val initialPage: Int,
     val previewResources: List<MediaResource>,
-    val selectedResources: List<MediaResource>
+    val selectedResources: List<MediaResource>,
 )
 
 internal sealed class MatisseAction {

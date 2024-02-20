@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -65,7 +66,7 @@ internal fun MatissePreviewPage(viewModel: MatisseViewModel) {
                 top = 0.dp,
                 bottom = 0.dp
             ),
-            containerColor = colorResource(id = R.color.matisse_preview_page_background_color)
+            containerColor =  MaterialTheme.colorScheme.inverseSurface
         ) { paddingValues ->
             Box(
                 modifier = Modifier
@@ -148,7 +149,7 @@ private fun BoxScope.BottomController(
         val sureButtonViewState = viewModel.sureButtonViewState
         Box(
             modifier = Modifier
-                .background(color = colorResource(id = R.color.matisse_preview_page_controller_background_color))
+                .background(color = MaterialTheme.colorScheme.inverseSurface)
                 .navigationBarsPadding()
                 .fillMaxWidth()
                 .height(height = 56.dp)
@@ -162,7 +163,7 @@ private fun BoxScope.BottomController(
                     .wrapContentSize(align = Alignment.Center),
                 textAlign = TextAlign.Center,
                 style = TextStyle(
-                    color = colorResource(id = R.color.matisse_back_text_color),
+                    color = MaterialTheme.colorScheme.inverseOnSurface,
                     fontSize = 16.sp
                 ),
                 text = stringResource(id = R.string.matisse_back)
@@ -196,13 +197,11 @@ private fun BoxScope.BottomController(
                     .wrapContentSize(align = Alignment.Center),
                 textAlign = TextAlign.Center,
                 style = TextStyle(
-                    color = colorResource(
-                        id = if (sureButtonViewState.clickable) {
-                            R.color.matisse_sure_text_color
-                        } else {
-                            R.color.matisse_sure_text_color_if_disable
-                        }
-                    ),
+                    color = if (sureButtonViewState.clickable) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.primary.copy(0.6f)
+                    },
                     fontSize = 16.sp
                 ),
                 text = sureButtonViewState.text

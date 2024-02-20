@@ -2,6 +2,7 @@ package github.leavesczy.matisse
 
 import android.net.Uri
 import android.os.Parcelable
+import github.leavesczy.matisse.internal.theme.ThemeColorProvider
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 
@@ -19,7 +20,9 @@ import kotlinx.parcelize.Parcelize
 data class Matisse(
     val maxSelectable: Int = 1,
     val supportedMimeTypes: List<MimeType> = ofImage(hasGif = true),
-    val captureStrategy: CaptureStrategy = NothingCaptureStrategy
+    val captureStrategy: CaptureStrategy = NothingCaptureStrategy,
+    val singleConfirmDirectly: Boolean = true,
+    val themeColorProvider: ThemeColorProvider? = null
 ) : Parcelable {
 
     init {
@@ -55,7 +58,7 @@ data class MediaResource(
     val size: Long,
     val path: String,
     val bucketId: String,
-    val bucketDisplayName: String
+    val bucketDisplayName: String?
 ) : Parcelable {
 
     @IgnoredOnParcel

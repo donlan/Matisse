@@ -10,10 +10,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
 import github.leavesczy.matisse.Matisse
 import github.leavesczy.matisse.MediaResource
 import github.leavesczy.matisse.R
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
@@ -24,34 +27,52 @@ import kotlinx.coroutines.launch
  * @Desc:
  * @Github：https://github.com/leavesCZY
  */
-internal class MatisseViewModel(application: Application, private val matisse: Matisse) :
-    AndroidViewModel(application) {
+internal class MatisseViewModel(
+    application: Application,
+    private val matisse: Matisse
+) : AndroidViewModel(application) {
 
     companion object {
+        const val DEFAULT_BUCKET_ID = "&__defaultBucketId__&"
+    }
 
-        private const val DEFAULT_BUCKET_ID = "&__defaultBucketId__&"
+    private fun defaultBucket(): MediaBucket {
+        return MediaBucket(
+            id = DEFAULT_BUCKET_ID,
+            displayName = getString(R.string.matisse_default_bucket_name),
+            displayIcon = Uri.EMPTY,
+            resources = emptyList(),
+            supportCapture = matisse.captureStrategy.isEnabled(),
+            pageSource = Pager(PagingConfig(20)) {
+                ImagesSource(
+                    context.contentResolver,
+                    null
+                )
+            }.flow
+        )
+    }
 
+    private val buckets by lazy {
+        ArrayList<MediaBucket>().apply {
+            add(defaultBucket())
+        }
     }
 
     private val context: Context
         get() = getApplication()
 
+
     private val permissionRequestingViewState = kotlin.run {
-        val defaultBucket = MediaBucket(
-            id = DEFAULT_BUCKET_ID,
-            displayName = getString(R.string.matisse_default_bucket_name),
-            displayIcon = Uri.EMPTY,
-            resources = emptyList(),
-            supportCapture = matisse.captureStrategy.isEnabled()
-        )
         MatisseViewState(
             matisse = matisse,
             state = MatisseState.PermissionRequesting,
             selectedResources = emptyList(),
-            allBucket = listOf(defaultBucket),
-            selectedBucket = defaultBucket
+            allBucket = buckets.toList(),
+            selectedBucket = buckets.first(),
+            pageSource = buckets.first().pageSource
         )
     }
+
 
     private val permissionDeniedViewState =
         permissionRequestingViewState.copy(state = MatisseState.PermissionDenied)
@@ -82,6 +103,7 @@ internal class MatisseViewModel(application: Application, private val matisse: M
     )
         private set
 
+
     private val _matisseAction = MutableSharedFlow<MatisseAction>()
 
     val matisseAction: SharedFlow<MatisseAction> = _matisseAction
@@ -107,35 +129,41 @@ internal class MatisseViewModel(application: Application, private val matisse: M
     }
 
     private suspend fun loadResources() {
-        matisseViewState = imageLoadingViewState
-        val allResources = MediaProvider.loadResources(
-            context = context,
-            filterMimeTypes = matisse.supportedMimeTypes
-        )
-        if (allResources.isEmpty()) {
-            matisseViewState = imageEmptyViewState
-        } else {
-            val allBucket =
-                MediaProvider.groupByBucket(resources = allResources).toMutableList()
-            val defaultBucket = MediaBucket(
-                id = DEFAULT_BUCKET_ID,
-                displayName = getString(R.string.matisse_default_bucket_name),
-                displayIcon = allResources[0].uri,
-                resources = allResources,
-                supportCapture = matisse.captureStrategy.isEnabled()
-            )
-            allBucket.add(0, defaultBucket)
-            matisseViewState = matisseViewState.copy(
+        matisseViewState = imageLoadingViewState.copy()
+        kotlin.runCatching {
+            buckets.clear()
+            buckets.add(defaultBucket())
+            MediaProvider.loadAllBuckets(context).forEach {
+                buckets.add(it.copy(pageSource = Pager(PagingConfig(20)) {
+                    ImagesSource(
+                        context.contentResolver,
+                        it.id
+                    )
+                }.flow))
+            }
+            matisseViewState = imageLoadingViewState.copy(
                 state = MatisseState.ImagesLoaded,
-                allBucket = allBucket,
-                selectedBucket = defaultBucket,
-                selectedResources = emptyList()
+                allBucket = buckets.toList()
+            )
+            onSelectBucket(buckets.first())
+        }.onFailure {
+            it.printStackTrace()
+            matisseViewState = imageLoadingViewState.copy(
+                state = MatisseState.ImagesError,
             )
         }
     }
 
     fun onSelectBucket(bucket: MediaBucket) {
-        matisseViewState = matisseViewState.copy(selectedBucket = bucket)
+        matisseViewState =
+            matisseViewState.copy(
+                selectedBucket = bucket,
+                pageSource = bucket.pageSource ?: Pager(PagingConfig(20)) {
+                    ImagesSource(
+                        context.contentResolver,
+                        bucket.id.takeIf { it != DEFAULT_BUCKET_ID })
+                }.flow
+            )
     }
 
     fun onMediaCheckChanged(mediaResource: MediaResource) {
@@ -167,18 +195,31 @@ internal class MatisseViewModel(application: Application, private val matisse: M
             matissePreviewViewState =
                 matissePreviewViewState.copy(selectedResources = selectedResources)
         }
+        if (!alreadySelected && matisse.maxSelectable == 1 && matisse.singleConfirmDirectly) {
+            onClickSureButton()
+            return
+        }
     }
 
     fun onClickMedia(mediaResource: MediaResource) {
         val previewResources = matisseViewState.selectedBucket.resources
         val selectedResources = matisseViewState.selectedResources
         val initialPage = previewResources.indexOf(element = mediaResource)
-        matissePreviewViewState = matissePreviewViewState.copy(
-            visible = true,
-            initialPage = initialPage,
-            selectedResources = selectedResources,
-            previewResources = previewResources,
-        )
+        matissePreviewViewState = if (initialPage < 0) {
+            matissePreviewViewState.copy(
+                visible = true,
+                initialPage = 0,
+                selectedResources = selectedResources,
+                previewResources = listOf(mediaResource),
+            )
+        } else {
+            matissePreviewViewState.copy(
+                visible = true,
+                initialPage = initialPage,
+                selectedResources = selectedResources,
+                previewResources = previewResources,
+            )
+        }
     }
 
     private fun onClickPreviewButton() {
@@ -203,6 +244,16 @@ internal class MatisseViewModel(application: Application, private val matisse: M
         tempImageUriForTakePicture =
             matisse.captureStrategy.createImageUri(context = context)
         return tempImageUriForTakePicture
+    }
+
+    fun onTakeFromFolder(uri: Uri) {
+        viewModelScope.launch {
+            val resource =
+                matisse.captureStrategy.loadResource(context = context, imageUri = uri)
+            if (resource != null) {
+                onSure(resources = listOf(resource))
+            }
+        }
     }
 
     fun takePictureResult(successful: Boolean) {
@@ -270,6 +321,10 @@ internal class MatisseViewModel(application: Application, private val matisse: M
         if (message.isNotBlank()) {
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    fun retryLoad() {
+
     }
 
 }
