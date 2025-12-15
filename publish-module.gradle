@@ -1,0 +1,50 @@
+apply plugin: 'maven-publish'
+
+task androidSourcesJar(type: Jar) {
+    archiveClassifier.set('sources')
+}
+
+
+//if (project.plugins.findPlugin("com.android.library")) {
+//    from android.sourceSets.main.java.srcDirs
+//    from android.sourceSets.main.kotlin.srcDirs
+//} else {
+//    from sourceSets.main.java.srcDirs
+//    from sourceSets.main.kotlin.srcDirs
+//}
+
+
+artifacts {
+    archives androidSourcesJar
+}
+
+group = "github.leavesczy"
+version = "1.0.0"
+
+afterEvaluate {
+    publishing {
+
+        repositories {
+            maven {
+                name = "loaclRepo"
+                url = "file:///Users/liangguidong/AndroidStudioProjects/repo"
+            }
+        }
+
+        publications {
+            release(MavenPublication) {
+                groupId "github.leavesczy"
+                artifactId "matisse"
+                version "1.0.21"
+                if (project.plugins.findPlugin("com.android.library")) {
+                    from components.release
+                } else {
+                    from components.java
+                }
+
+                // artifact androidSourcesJar
+
+            }
+        }
+    }
+}

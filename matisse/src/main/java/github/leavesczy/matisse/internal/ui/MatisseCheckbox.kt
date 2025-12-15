@@ -73,10 +73,10 @@ internal fun MatisseCheckbox(
                 enabled = true,
                 role = Role.Checkbox,
                 interactionSource = remember { MutableInteractionSource() },
-                indication = rememberRipple(
-                    bounded = false,
-                    radius = size / 2
-                )
+//                indication = rememberRipple(
+//                    bounded = false,
+//                    radius = size / 2
+//                )
             )
             .wrapContentSize(Alignment.Center)
             .requiredSize(size = size)
