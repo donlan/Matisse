@@ -22,7 +22,8 @@ data class Matisse(
     val supportedMimeTypes: List<MimeType> = ofImage(hasGif = true),
     val captureStrategy: CaptureStrategy = NothingCaptureStrategy,
     val singleConfirmDirectly: Boolean = true,
-    val themeColorProvider: ThemeColorProvider? = null
+    val themeColorProvider: ThemeColorProvider? = null,
+    val notGrantedStoragePermissionTips: String = "请授予 Matisse 存储权限，否则无法选择图片"
 ) : Parcelable {
 
     init {

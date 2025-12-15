@@ -35,7 +35,7 @@ afterEvaluate {
             release(MavenPublication) {
                 groupId "github.leavesczy"
                 artifactId "matisse"
-                version "1.0.21"
+                version "1.0.22"
                 if (project.plugins.findPlugin("com.android.library")) {
                     from components.release
                 } else {

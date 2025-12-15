@@ -120,7 +120,7 @@ internal class MatisseViewModel(
                 loadResources()
             } else {
                 matisseViewState = permissionDeniedViewState
-                showToast(message = getString(R.string.matisse_on_read_external_storage_permission_denied))
+                showToast(message = matisse.notGrantedStoragePermissionTips)
             }
             previewButtonViewState = buildPreviewButtonViewState()
             sureButtonViewState = buildSureButtonViewState()

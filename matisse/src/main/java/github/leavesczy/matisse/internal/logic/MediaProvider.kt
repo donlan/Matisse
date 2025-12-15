@@ -199,7 +199,7 @@ internal object MediaProvider {
                                 orientation = orientation,
                                 path = data,
                                 size = size,
-                                bucketId = bucketId,
+                                bucketId = bucketId ?: "",
                                 bucketDisplayName = bucketDisplayName,
                             )
                             mediaResourceList.add(mediaResource)
@@ -431,7 +431,7 @@ class ImagesSource(
                         orientation = orientation,
                         path = data,
                         size = size,
-                        bucketId = bucketId,
+                        bucketId = bucketId ?: "",
                         bucketDisplayName = bucketDisplayName,
                     )
                     mediaResourceList.add(mediaResource)
