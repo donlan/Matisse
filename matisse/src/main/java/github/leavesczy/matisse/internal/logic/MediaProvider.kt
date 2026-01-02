@@ -91,7 +91,7 @@ internal object MediaProvider {
             } else {
                 val selection = if (filterMimeTypes.isNullOrEmpty()) {
                     buildString {
-                        append("0=0) group by (${MediaStore.Images.ImageColumns.BUCKET_ID}")
+                        append("0=0) group by (${MediaStore.Images.ImageColumns.BUCKET_ID})")
                     }
                 } else {
                     val sb = StringBuilder()
@@ -107,7 +107,7 @@ internal object MediaProvider {
                     }
                     sb.append(")")
                     sb.toString()
-                    sb.append("group by (${MediaStore.Images.ImageColumns.BUCKET_ID}")
+                    sb.append("group by (${MediaStore.Images.ImageColumns.BUCKET_ID})")
                     sb.toString()
                 }
                 context.contentResolver.query(
@@ -248,16 +248,60 @@ internal object MediaProvider {
         }
     }
 
+    private fun getPathFromUri(context: Context, uri: Uri): String? {
+        return kotlin.runCatching {
+            context.contentResolver.query(
+                uri,
+                arrayOf(MediaStore.Images.Media.DATA),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val columnIndex = cursor.getColumnIndex(MediaStore.Images.Media.DATA)
+                    if (columnIndex != -1) {
+                        cursor.getString(columnIndex)
+                    } else {
+                        null
+                    }
+                } else {
+                    null
+                }
+            }
+        }.getOrNull()
+    }
+
     suspend fun loadResources(context: Context, uri: Uri): MediaResource? {
         return withContext(context = Dispatchers.IO) {
-            val id = ContentUris.parseId(uri)
+            val id = runCatching { ContentUris.parseId(uri) }.getOrDefault(-1L)
             if (id == -1L) {
-                return@withContext null
+                return@withContext loadResourcesFallback(context, uri)
             }
             val selection = MediaStore.Images.Media._ID + " = " + id
             val resources =
                 loadResources(context = context, selection = selection, selectionArgs = null)
             if (resources.isNullOrEmpty() || resources.size != 1) {
+                return@withContext null
+            }
+            return@withContext resources[0]
+        }
+    }
+
+    private suspend fun loadResourcesFallback(context: Context, uri: Uri): MediaResource? {
+        return withContext(context = Dispatchers.IO) {
+            val path = getPathFromUri(context, uri)
+            if (path.isNullOrBlank()) {
+                return@withContext null
+            }
+            val selection = MediaStore.Images.Media.DATA + " = ?"
+            val selectionArgs = arrayOf(path)
+            val resources =
+                loadResources(
+                    context = context,
+                    selection = selection,
+                    selectionArgs = selectionArgs
+                )
+            if (resources.isNullOrEmpty()) {
                 return@withContext null
             }
             return@withContext resources[0]
