@@ -6,7 +6,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import coil.load
+import coil3.load
 import github.leavesczy.matisse.MediaResource
 
 /**

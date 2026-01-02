@@ -4,11 +4,14 @@ import android.app.Application
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
+import android.os.Build.VERSION.SDK_INT
 import androidx.appcompat.app.AppCompatDelegate
-import coil.Coil
-import coil.ImageLoader
-import coil.decode.GifDecoder
-import coil.decode.ImageDecoderDecoder
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
+import coil3.gif.AnimatedImageDecoder
+import coil3.gif.GifDecoder
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 
 /**
  * @Author: leavesCZY
@@ -16,7 +19,7 @@ import coil.decode.ImageDecoderDecoder
  * @Desc:
  * @Github：https://github.com/leavesCZY
  */
-class MatisseApplication : Application() {
+class MatisseApplication : Application(), SingletonImageLoader.Factory {
 
     private val Context.isSystemInDarkTheme: Boolean
         get() = resources.configuration.isSystemInDarkTheme
@@ -33,20 +36,18 @@ class MatisseApplication : Application() {
                 AppCompatDelegate.MODE_NIGHT_NO
             }
         )
-        initCoil(context = this)
     }
 
-    private fun initCoil(context: Context) {
-        val imageLoader = ImageLoader.Builder(context = context)
+
+    override fun newImageLoader(context: PlatformContext): ImageLoader {
+        return ImageLoader.Builder(context = context)
             .components {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    add(ImageDecoderDecoder.Factory())
+                if (SDK_INT >= 28) {
+                    add(AnimatedImageDecoder.Factory())
                 } else {
                     add(GifDecoder.Factory())
                 }
-            }
-            .build()
-        Coil.setImageLoader(imageLoader)
+            }.build()
     }
 
 }
