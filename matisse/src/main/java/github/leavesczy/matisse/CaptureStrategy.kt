@@ -13,7 +13,6 @@ import androidx.core.content.FileProvider
 import github.leavesczy.matisse.internal.logic.MediaProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 import java.io.File
 import java.util.*
@@ -101,8 +100,7 @@ object NothingCaptureStrategy : CaptureStrategy {
 @Parcelize
 class FileProviderCaptureStrategy(private val authority: String) : CaptureStrategy {
 
-    @IgnoredOnParcel
-    private val uriFileMap = mutableMapOf<Uri, File>()
+    private val uriFileMap = mutableMapOf<Uri, String>()
 
     override fun isEnabled(): Boolean {
         return true
@@ -118,7 +116,7 @@ class FileProviderCaptureStrategy(private val authority: String) : CaptureStrate
                 val tempFile = createTempFile(context = context)
                 if (tempFile != null) {
                     val uri = FileProvider.getUriForFile(context, authority, tempFile)
-                    uriFileMap[uri] = tempFile
+                    uriFileMap[uri] = tempFile.absolutePath
                     return@withContext uri
                 }
             } catch (e: Throwable) {
@@ -139,9 +137,9 @@ class FileProviderCaptureStrategy(private val authority: String) : CaptureStrate
 
     override suspend fun loadResource(context: Context, imageUri: Uri): MediaResource {
         return withContext(context = Dispatchers.IO) {
-            val imageFile = uriFileMap[imageUri]!!
+            val imageFilePath = uriFileMap[imageUri]!!
+            val imageFile = File(imageFilePath)
             uriFileMap.remove(key = imageUri)
-            val imageFilePath = imageFile.absolutePath
             val option = BitmapFactory.Options()
             option.inJustDecodeBounds = true
             BitmapFactory.decodeFile(imageFilePath, option)
@@ -163,9 +161,12 @@ class FileProviderCaptureStrategy(private val authority: String) : CaptureStrate
 
     override suspend fun onTakePictureCanceled(context: Context, imageUri: Uri) {
         withContext(context = Dispatchers.IO) {
-            val imageFile = uriFileMap[imageUri]
-            if (imageFile != null && imageFile.exists()) {
-                imageFile.delete()
+            val imageFilePath = uriFileMap[imageUri]
+            if (imageFilePath != null) {
+                val imageFile = File(imageFilePath)
+                if (imageFile.exists()) {
+                    imageFile.delete()
+                }
             }
             uriFileMap.remove(key = imageUri)
         }
@@ -219,7 +220,6 @@ class MediaStoreCaptureStrategy : CaptureStrategy {
 @Suppress("CanBeParameter")
 class SmartCaptureStrategy(private val authority: String) : CaptureStrategy {
 
-    @IgnoredOnParcel
     private val proxy = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         MediaStoreCaptureStrategy()
     } else {
