@@ -100,7 +100,6 @@ object NothingCaptureStrategy : CaptureStrategy {
 @Parcelize
 class FileProviderCaptureStrategy(private val authority: String) : CaptureStrategy {
 
-    private val uriFileMap = mutableMapOf<Uri, String>()
 
     override fun isEnabled(): Boolean {
         return true
@@ -135,9 +134,9 @@ class FileProviderCaptureStrategy(private val authority: String) : CaptureStrate
         return null
     }
 
-    override suspend fun loadResource(context: Context, imageUri: Uri): MediaResource {
+    override suspend fun loadResource(context: Context, imageUri: Uri): MediaResource? {
         return withContext(context = Dispatchers.IO) {
-            val imageFilePath = uriFileMap[imageUri]!!
+            val imageFilePath = uriFileMap[imageUri] ?: return@withContext null
             val imageFile = File(imageFilePath)
             uriFileMap.remove(key = imageUri)
             val option = BitmapFactory.Options()
@@ -170,6 +169,13 @@ class FileProviderCaptureStrategy(private val authority: String) : CaptureStrate
             }
             uriFileMap.remove(key = imageUri)
         }
+    }
+
+    companion object {
+        // 使用 @JvmStatic 确保在 Java 代码中也可以方便地访问
+        // 使用 ConcurrentHashMap 来保证线程安全
+        @JvmStatic
+        private val uriFileMap = java.util.concurrent.ConcurrentHashMap<Uri, String>(2)
     }
 
 }
