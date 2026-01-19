@@ -9,9 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
-import android.provider.Telephony.Sms
 import android.util.Log
-import androidx.core.content.ContentResolverCompat
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import github.leavesczy.matisse.Matisse
@@ -118,22 +116,23 @@ internal object MediaProvider {
                     "${MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME} ASC"
                 )
             }?.use {
-                it.moveToFirst()
-                do {
-                    buckets.add(
-                        MediaBucket(
-                            id = it.getString(MediaStore.Images.ImageColumns.BUCKET_ID),
-                            displayName = it.getStringSafe(MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME)
-                                ?: "",
-                            displayIcon = ContentUris.withAppendedId(
-                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                                it.getLong(MediaStore.Images.Media._ID)
-                            ),
-                            resources = emptyList(),
-                            supportCapture = false
+                if (it.moveToFirst()) {
+                    do {
+                        buckets.add(
+                            MediaBucket(
+                                id = it.getString(MediaStore.Images.ImageColumns.BUCKET_ID),
+                                displayName = it.getStringSafe(MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME)
+                                    ?: "",
+                                displayIcon = ContentUris.withAppendedId(
+                                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                                    it.getLong(MediaStore.Images.Media._ID)
+                                ),
+                                resources = emptyList(),
+                                supportCapture = false
+                            )
                         )
-                    )
-                } while (it.moveToNext())
+                    } while (it.moveToNext())
+                }
             }
             return@withContext buckets
         }
