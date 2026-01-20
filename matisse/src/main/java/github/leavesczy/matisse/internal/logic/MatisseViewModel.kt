@@ -17,14 +17,10 @@ import github.leavesczy.matisse.Matisse
 import github.leavesczy.matisse.MediaResource
 import github.leavesczy.matisse.R
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.io.path.copyTo
-import kotlin.io.path.exists
-import android.webkit.MimeTypeMap
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -42,6 +38,14 @@ internal class MatisseViewModel(
 
     companion object {
         const val DEFAULT_BUCKET_ID = "&__defaultBucketId__&"
+    }
+
+    init {
+        viewModelScope.launch {
+            runCatching {
+                clearOldCacheFiles()
+            }
+        }
     }
 
     private fun defaultBucket(): MediaBucket {
@@ -263,6 +267,30 @@ internal class MatisseViewModel(
         }
     }
 
+    /**
+     * 清理 cache/matisse 目录下超过 24 小时的旧文件
+     */
+    private suspend fun clearOldCacheFiles() {
+        withContext(Dispatchers.IO) {
+            try {
+                val cacheDir = File(context.cacheDir, "matisse")
+                if (cacheDir.exists() && cacheDir.isDirectory) {
+                    val oneDayMillis = 24 * 60 * 60 * 1000L
+                    val currentTime = System.currentTimeMillis()
+
+                    cacheDir.listFiles()?.forEach { file ->
+                        // 如果文件最后修改时间早于一天前，则删除
+                        if (currentTime - file.lastModified() > oneDayMillis) {
+                            file.delete()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
 
     /**
      * 将 Uri 拷贝到私有目录并解析为 MediaResource
@@ -279,14 +307,27 @@ internal class MatisseViewModel(
                 var height: Int? = null
                 contentResolver.query(sourceUri, null, null, null, null)?.use { cursor ->
                     if (cursor.moveToFirst()) {
-                        fileName =
-                            cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME))
-                        orientation =
-                            cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.ORIENTATION))
-                        width =
-                            cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.WIDTH))
-                        height =
-                            cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.HEIGHT))
+                        // 使用 getColumnIndex 而不是 getColumnIndexOrThrow，防止崩溃
+                        val nameIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME)
+                        if (nameIndex != -1) {
+                            fileName = cursor.getString(nameIndex)
+                        }
+
+                        val orientationIndex =
+                            cursor.getColumnIndex(MediaStore.MediaColumns.ORIENTATION)
+                        if (orientationIndex != -1) {
+                            orientation = cursor.getInt(orientationIndex)
+                        }
+
+                        val widthIndex = cursor.getColumnIndex(MediaStore.MediaColumns.WIDTH)
+                        if (widthIndex != -1) {
+                            width = cursor.getInt(widthIndex)
+                        }
+
+                        val heightIndex = cursor.getColumnIndex(MediaStore.MediaColumns.HEIGHT)
+                        if (heightIndex != -1) {
+                            height = cursor.getInt(heightIndex)
+                        }
                     }
                 }
 
