@@ -3,6 +3,7 @@ package github.leavesczy.matisse.internal.logic
 import android.app.Application
 import android.content.Context
 import android.net.Uri
+import android.provider.MediaStore
 import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
@@ -20,6 +21,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.io.path.copyTo
+import kotlin.io.path.exists
+import android.webkit.MimeTypeMap
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 
 /**
  * @Author: leavesCZY
@@ -248,10 +256,84 @@ internal class MatisseViewModel(
 
     fun onTakeFromFolder(uri: Uri) {
         viewModelScope.launch {
-            val resource =
-                matisse.captureStrategy.loadResource(context = context, imageUri = uri)
+            val resource = copyUriToPrivateStorage(context, uri)
             if (resource != null) {
                 onSure(resources = listOf(resource))
+            }
+        }
+    }
+
+
+    /**
+     * 将 Uri 拷贝到私有目录并解析为 MediaResource
+     */
+    private suspend fun copyUriToPrivateStorage(context: Context, sourceUri: Uri): MediaResource? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val contentResolver = context.contentResolver
+
+                // 1. 获取文件名和基本信息
+                var fileName = "temp_${System.currentTimeMillis()}"
+                var orientation = 0
+                var width: Int? = null
+                var height: Int? = null
+                contentResolver.query(sourceUri, null, null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        fileName =
+                            cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME))
+                        orientation =
+                            cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.ORIENTATION))
+                        width =
+                            cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.WIDTH))
+                        height =
+                            cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.HEIGHT))
+                    }
+                }
+
+                // 2. 确定目标文件路径 (App 私有缓存目录下的 pick_photos 文件夹)
+                val outputDir = File(context.cacheDir, "matisse")
+                if (!outputDir.exists()) {
+                    outputDir.mkdirs()
+                }
+                val outputFile = File(outputDir, fileName)
+
+                // 3. 执行拷贝流操作
+                val inputStream: InputStream? = contentResolver.openInputStream(sourceUri)
+                if (inputStream != null) {
+                    FileOutputStream(outputFile).use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                } else {
+                    return@withContext null
+                }
+
+                // 4. 解析 MediaResource 所需的额外信息（宽高、MimeType 等）
+                val mimeType = contentResolver.getType(sourceUri) ?: "image/*"
+
+                // 这里你可以使用熟悉的 BitmapFactory 来获取宽高
+                val options = android.graphics.BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                android.graphics.BitmapFactory.decodeFile(outputFile.absolutePath, options)
+
+                // 5. 组装 MediaResource
+                // 注意：因为是私有文件，id 可以生成一个随机 Long，uri 使用 FileProvider 生成或 File Uri
+                MediaResource(
+                    id = System.currentTimeMillis(), // 临时 ID
+                    uri = Uri.fromFile(outputFile),   // 指向私有目录的 Uri
+                    displayName = fileName,
+                    mimeType = mimeType,
+                    width = width ?: options.outWidth,
+                    height = height ?: options.outHeight,
+                    orientation = orientation,
+                    size = outputFile.length(),
+                    path = outputFile.absolutePath,
+                    bucketId = "external_picker",
+                    bucketDisplayName = "External"
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
             }
         }
     }
