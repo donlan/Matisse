@@ -2,6 +2,7 @@ package github.leavesczy.matisse
 
 import android.net.Uri
 import android.os.Parcelable
+import github.leavesczy.matisse.internal.Logger
 import github.leavesczy.matisse.internal.theme.ThemeColorProvider
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
@@ -23,7 +24,7 @@ data class Matisse(
     val captureStrategy: CaptureStrategy = NothingCaptureStrategy,
     val singleConfirmDirectly: Boolean = true,
     val themeColorProvider: ThemeColorProvider? = null,
-    val notGrantedStoragePermissionTips: String = "请授予 Matisse 存储权限，否则无法选择图片"
+    val notGrantedStoragePermissionTips: String = "请授予 Matisse 存储权限，否则无法选择图片",
 ) : Parcelable {
 
     init {
@@ -35,17 +36,19 @@ data class Matisse(
 
         fun ofImage(hasGif: Boolean = true): List<MimeType> {
             return if (hasGif) {
-                listOf(elements = MimeType.values())
+                listOf(elements = MimeType.entries.toTypedArray())
             } else {
-                mutableListOf(elements = MimeType.values()).apply {
+                mutableListOf(elements = MimeType.entries.toTypedArray()).apply {
                     remove(element = MimeType.GIF)
                 }
             }
         }
 
+        var logger: Logger = Logger.DEFAULT
     }
-
 }
+
+
 
 @Parcelize
 data class MediaResource(

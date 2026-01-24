@@ -159,7 +159,7 @@ internal class MatisseViewModel(
             )
             onSelectBucket(buckets.first())
         }.onFailure {
-            it.printStackTrace()
+            Matisse.logger.e(tag = "Matisse", it)
             matisseViewState = imageLoadingViewState.copy(
                 state = MatisseState.ImagesError,
             )
@@ -261,6 +261,9 @@ internal class MatisseViewModel(
     fun onTakeFromFolder(uri: Uri) {
         viewModelScope.launch {
             val resource = copyUriToPrivateStorage(context, uri)
+            Matisse.logger.i(tag = "Matisse") {
+                "onTakeFromFolder: $resource"
+            }
             if (resource != null) {
                 onSure(resources = listOf(resource))
             }

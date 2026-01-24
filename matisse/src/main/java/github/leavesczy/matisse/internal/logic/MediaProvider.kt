@@ -9,7 +9,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
-import android.util.Log
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import github.leavesczy.matisse.Matisse
@@ -41,7 +40,7 @@ internal object MediaProvider {
                 }
                 context.contentResolver.insert(imageCollection, newImage)
             } catch (e: Throwable) {
-                e.printStackTrace()
+                Matisse.logger.e("Matisse", e)
                 null
             }
         }
@@ -52,7 +51,7 @@ internal object MediaProvider {
             try {
                 context.contentResolver.delete(imageUri, null, null)
             } catch (e: Throwable) {
-                e.printStackTrace()
+                Matisse.logger.e("Matisse", e)
             }
         }
     }
@@ -75,6 +74,9 @@ internal object MediaProvider {
         filterMimeTypes: List<MimeType>? = null
     ): ArrayList<MediaBucket> {
         return runCatching {
+            Matisse.logger.i("Matisse") {
+                "start loadAllBucketsApi29"
+            }
             withTimeout(2000L) {
                 val buckets = ArrayList<MediaBucket>()
                 val projectionArgs = arrayOf(
@@ -123,7 +125,7 @@ internal object MediaProvider {
                 return@withTimeout buckets
             }
         }.onFailure {
-            it.printStackTrace()
+            Matisse.logger.e("Matisse", it)
         }.getOrNull() ?: ArrayList()
     }
 
@@ -272,13 +274,12 @@ internal object MediaProvider {
                         }
                     }
                 }.let {
-                    Log.d(
-                        "QueryImage",
+                    Matisse.logger.d("QueryImage") {
                         "loadResources cost $it with count ${mediaResourceList.size}"
-                    )
+                    }
                 }
             } catch (e: Throwable) {
-                e.printStackTrace()
+                Matisse.logger.e("Matisse", e)
             }
             return@withContext mediaResourceList
         }
@@ -334,6 +335,8 @@ internal object MediaProvider {
                     null
                 }
             }
+        }.onFailure {
+            Matisse.logger.e("Matisse", it)
         }.getOrNull()
     }
 
