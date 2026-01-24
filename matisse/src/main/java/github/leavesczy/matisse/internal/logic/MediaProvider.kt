@@ -17,6 +17,7 @@ import github.leavesczy.matisse.MediaResource
 import github.leavesczy.matisse.MimeType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.io.File
 import kotlin.system.measureTimeMillis
 
@@ -56,11 +57,85 @@ internal object MediaProvider {
         }
     }
 
+    // 提取一个通用的 MimeType 过滤拼接函数
+    private fun buildMimeTypeSelection(filterMimeTypes: List<MimeType>): String {
+        return buildString {
+            append(MediaStore.Images.Media.MIME_TYPE)
+            append(" IN (")
+            filterMimeTypes.forEachIndexed { index, mimeType ->
+                if (index != 0) append(",")
+                append("'").append(mimeType.type).append("'")
+            }
+            append(")")
+        }
+    }
+
+    private suspend fun loadAllBucketsApi29(
+        context: Context,
+        filterMimeTypes: List<MimeType>? = null
+    ): ArrayList<MediaBucket> {
+        return runCatching {
+            withTimeout(2000L) {
+                val buckets = ArrayList<MediaBucket>()
+                val projectionArgs = arrayOf(
+                    MediaStore.Images.Media._ID,
+                    MediaStore.Images.ImageColumns.BUCKET_ID,
+                    MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME
+                )
+                val selection =
+                    if (!filterMimeTypes.isNullOrEmpty()) buildMimeTypeSelection(filterMimeTypes) else null
+                context.contentResolver.query(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    projectionArgs,
+                    selection,
+                    null,
+                    "${MediaStore.Images.Media.DATE_MODIFIED} DESC"
+                )?.use {
+                    if (it.moveToFirst()) {
+                        val bucketIdSet = HashSet<String>() // HashSet 查找性能 O(1)
+                        val idColumn = it.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+                        val bucketIdColumn =
+                            it.getColumnIndexOrThrow(MediaStore.Images.ImageColumns.BUCKET_ID)
+
+                        do {
+                            val bucketId = it.getString(bucketIdColumn) ?: ""
+                            // 关键：利用 Cursor 已经按时间排好序的特性，每个 BucketId 只取第一条记录（最新的那张图作为封面）
+                            if (bucketId.isNotBlank() && bucketIdSet.add(bucketId)) {
+                                buckets.add(
+                                    MediaBucket(
+                                        id = bucketId,
+                                        displayName = it.getStringSafe(MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME)
+                                            ?: "",
+                                        displayIcon = ContentUris.withAppendedId(
+                                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                                            it.getLong(idColumn)
+                                        ),
+                                        resources = emptyList(),
+                                        supportCapture = false
+                                    )
+                                )
+                            }
+                            // 性能优化：如果已经扫描了大量数据，可以根据业务需求决定是否中断，
+                            // 但通常 Cursor 遍历元数据是非常快的。
+                        } while (it.moveToNext())
+                    }
+                }
+                return@withTimeout buckets
+            }
+        }.onFailure {
+            it.printStackTrace()
+        }.getOrNull() ?: ArrayList()
+    }
+
+
     suspend fun loadAllBuckets(
         context: Context,
         filterMimeTypes: List<MimeType>? = null
     ): ArrayList<MediaBucket> =
         withContext(Dispatchers.IO) {
+            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                return@withContext loadAllBucketsApi29(context, filterMimeTypes)
+            }
             val buckets = ArrayList<MediaBucket>()
             val projectionArgs = arrayOf(
                 MediaStore.Images.Media._ID,
@@ -87,27 +162,19 @@ internal object MediaProvider {
                     null
                 )
             } else {
-                val selection = if (filterMimeTypes.isNullOrEmpty()) {
-                    buildString {
-                        append("0=0) group by (${MediaStore.Images.ImageColumns.BUCKET_ID})")
+                val selection = buildString {
+                    if (!filterMimeTypes.isNullOrEmpty()) {
+                        append(buildMimeTypeSelection(filterMimeTypes))
+                    } else {
+                        append("1=1")
                     }
-                } else {
-                    val sb = StringBuilder()
-                    sb.append(MediaStore.Images.Media.MIME_TYPE)
-                    sb.append(" IN (")
-                    filterMimeTypes.forEachIndexed { index, mimeType ->
-                        if (index != 0) {
-                            sb.append(",")
-                        }
-                        sb.append("'")
-                        sb.append(mimeType.type)
-                        sb.append("'")
-                    }
-                    sb.append(")")
-                    sb.toString()
-                    sb.append("group by (${MediaStore.Images.ImageColumns.BUCKET_ID})")
-                    sb.toString()
+                    // 核心修复点：这里使用 ") GROUP BY (" 这种 Hack 方式
+                    // 系统会自动在外部套一层括号，最终生成：
+                    // WHERE ((你的Selection)) GROUP BY (bucket_id)
+                    // 传入：1=1) GROUP BY (${MediaStore.Images.ImageColumns.BUCKET_ID}
+                    append(") GROUP BY (${MediaStore.Images.ImageColumns.BUCKET_ID}")
                 }
+
                 context.contentResolver.query(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     projectionArgs,
@@ -532,6 +599,8 @@ class ImagesSource(
 
             val mediaResourceList = mutableListOf<MediaResource>()
 
+            // 1. 明确定义当前的起始位置
+            val currentOffset = params.key ?: 0
 
             val mediaCursor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val bundle = Bundle().apply {
@@ -542,9 +611,9 @@ class ImagesSource(
                     )
                     putInt(
                         ContentResolver.QUERY_ARG_LIMIT,
-                        20
+                        params.loadSize
                     )
-                    putInt(ContentResolver.QUERY_ARG_OFFSET, params.key ?: 0)
+                    putInt(ContentResolver.QUERY_ARG_OFFSET, currentOffset)
                 }
                 contentResolver.query(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -554,7 +623,7 @@ class ImagesSource(
                 ) ?: return@withContext LoadResult.Error(IllegalArgumentException("Query invalid."))
             } else {
                 val sortOrder =
-                    "${MediaStore.Images.Media.DATE_MODIFIED} DESC LIMIT 20 OFFSET ${params.key}"
+                    "${MediaStore.Images.Media.DATE_MODIFIED} DESC LIMIT ${params.loadSize} OFFSET $currentOffset"
                 contentResolver.query(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     projection,
@@ -600,9 +669,19 @@ class ImagesSource(
                     mediaResourceList.add(mediaResource)
                 }
             }
-            return@withContext LoadResult.Page(mediaResourceList, params.key?.run {
-                (this - params.loadSize).coerceAtMost(0)
-            }, if (mediaResourceList.isEmpty()) null else (params.key ?: 0) + params.loadSize)
+            // 3. 修正返回值，确保当加载到的数据少于请求的数据量时停止分页
+            val nextKey =
+                if (mediaResourceList.isEmpty() || mediaResourceList.size < params.loadSize) {
+                    null
+                } else {
+                    currentOffset + params.loadSize
+                }
+
+            return@withContext LoadResult.Page(
+                data = mediaResourceList,
+                prevKey = if (currentOffset <= 0) null else currentOffset - params.loadSize,
+                nextKey = nextKey
+            )
         }
     }
 
