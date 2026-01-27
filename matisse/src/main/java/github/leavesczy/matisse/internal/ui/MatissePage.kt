@@ -127,9 +127,20 @@ internal fun MatissePage(
                                 text = stringResource(id = R.string.matisse_load_error),
                                 Modifier
                                     .wrapContentSize()
-                                    .padding(start = 12.dp),
+                                    .padding(horizontal = 24.dp),
                                 color = Color.Gray,
                             )
+
+                            viewModel.matisse.loadErrorHint?.let {
+                                Text(
+                                    text = it,
+                                    Modifier
+                                        .wrapContentSize()
+                                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                                    color = Color.Gray,
+                                )
+                            }
+
                             Button(
                                 onClick = { viewModel.retryLoad() },
                                 modifier = Modifier
@@ -243,7 +254,8 @@ internal fun MatissePage(
                         )
                     ) {
                         if (supportCapture) {
-                            item(key = "MatisseCapture",
+                            item(
+                                key = "MatisseCapture",
                                 contentType = "MatisseCapture",
                                 content = {
                                     CaptureItem(onClick = onRequestTakePicture)

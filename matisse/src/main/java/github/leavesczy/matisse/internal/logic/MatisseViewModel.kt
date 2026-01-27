@@ -33,7 +33,7 @@ import java.io.InputStream
  */
 internal class MatisseViewModel(
     application: Application,
-    private val matisse: Matisse
+    val matisse: Matisse
 ) : AndroidViewModel(application) {
 
     companion object {

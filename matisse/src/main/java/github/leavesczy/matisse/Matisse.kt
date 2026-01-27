@@ -25,6 +25,7 @@ data class Matisse(
     val singleConfirmDirectly: Boolean = true,
     val themeColorProvider: ThemeColorProvider? = null,
     val notGrantedStoragePermissionTips: String = "请授予 Matisse 存储权限，否则无法选择图片",
+    val loadErrorHint: String? = null
 ) : Parcelable {
 
     init {
@@ -47,7 +48,6 @@ data class Matisse(
         var logger: Logger = Logger.DEFAULT
     }
 }
-
 
 
 @Parcelize
