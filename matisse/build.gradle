@@ -52,7 +52,7 @@ dependencies {
     androidTestImplementation "androidx.test.espresso:espresso-core:3.7.0"
     implementation "androidx.appcompat:appcompat:1.8.0"
     implementation "androidx.activity:activity-compose:1.13.0"
-    def composeBom = platform("androidx.compose:compose-bom:2026.08.00")
+    def composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation composeBom
     androidTestImplementation composeBom
     implementation "androidx.compose.material3:material3"
@@ -60,7 +60,7 @@ dependencies {
     def accompanistVersion = "0.36.0"
     implementation "com.google.accompanist:accompanist-systemuicontroller:$accompanistVersion"
     implementation "com.google.accompanist:accompanist-pager:$accompanistVersion"
-    def coilVersion = "3.5.0"
+    def coilVersion = "3.6.2"
     implementation "io.coil-kt.coil3:coil-gif:$coilVersion"
     implementation "io.coil-kt.coil3:coil-compose:$coilVersion"
     implementation("io.coil-kt.coil3:coil-network-okhttp:$coilVersion")
